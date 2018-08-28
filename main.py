@@ -3,29 +3,36 @@
 import sys
 import praw
 import time
-import math
-import datetime
+import datetime as dt
 import numpy as np
 import matplotlib.pyplot as plt
-from pylab import figure, axes, pie, title, show
-
-
-from secretstuff import client_id, client_secret, user_agent
-
-# do e.g. ./main.py 96nkvw x output.html
+import matplotlib.dates as mdates
 
 def main():
-	if len(sys.argv) < 4:
-		print('Usage: ./main.py link_id access_token output_file')
+
+	print("num args:", len(sys.argv))
+
+	if len(sys.argv) < 6:
+		print('Usage: python3 main.py link_id client_id client_secret user_agent output_file')
 		sys.exit()
 
-	#args should be link id, access token and output file name
+	# args should be link id, access token and output file name
 	linkId = sys.argv[1]
-	accessToken = sys.argv[2]
-	outputFile = sys.argv[3]
+	client_id = sys.argv[2]
+	client_secret = sys.argv[3]
+	user_agent = sys.argv[4]
+	outputFile = sys.argv[5]
+	pngFileName = linkId + '.png'
 
-	print("link id is '" + linkId + "'")
+	print("args:")
+	print("link id:", linkId)
+	print("client id:", client_id)
+	print("client secret:", client_secret)
+	print("user_agent:", user_agent)
+	print("output file:", outputFile)
+	print("output png:", pngFileName)
 
+	# Obtain a submission object
 	reddit = praw.Reddit(
 		client_id=client_id,
 		client_secret=client_secret,
@@ -33,14 +40,26 @@ def main():
 #		password=password,
 		user_agent=user_agent)
 
+	# https://praw.readthedocs.io/en/latest/tutorials/comments.html
+	# Comment Extraction and Parsing
+
 	submission = reddit.submission(id=linkId)
 	print("submission title: " + submission.title)
 
+	submission.comments.replace_more(limit=None)
+
+	#i = 0
+	#top_level_comments = submission.comments
+	#for top_level_comment in top_level_comments:
+	#	i = i + 1
+
+	#print('Top level comments, i = ', i)
+	
+	# This list should contain all the comments so we can
+	# make a histogram of them.
 	commentsCreated = []
 
-	
-	i = 1
-	submission.comments.replace_more(limit=None)
+	#i = 0
 	for comment in submission.comments.list():
 		#print(i, "body	   ", comment.body[0:31])
 		#print(i, "author	 ", comment.author)
@@ -48,46 +67,21 @@ def main():
 		#print(i, "created	", comment.created)
 		#print(i, "utc		", comment.created_utc)
 		commentsCreated.append(comment.created_utc)
-		i = i + 1
+		#i = i + 1
 	
-	#print(commentsCreated)
+	#print('Total amount of comments, i = ', i)
+	n = len(commentsCreated)
+	print('Total amount of comments:', n)
 
-	minTime = min(commentsCreated)
-	maxTime = max(commentsCreated)
-
-	diffTime = maxTime - minTime
-
-	print('minTime', minTime)
-	print('maxTime', maxTime)
-	print('diffTime', diffTime)
-
-	bins = []
-	numBins = 100
-
-	for i in range(0, numBins):
-		x = minTime + round(i * (diffTime/numBins))
-		bins.append(x)
-
-
-	# --- 2018-08-07
-	# https://praw.readthedocs.io/en/latest/tutorials/comments.html
-	# Extracting comments with PRAW
-
-	# TODO: to make code understandable, focus on naming
-	# and code conventions
-	# TODO: testing should be done on the level of unit tests
-	# TODO: focus on performance by adding parallelism
-	# in comment fetching
-	# TODO: for reliable performance, add some retrying
-	# logic in case fetching fails
-	# TODO: test the program on page
-	# https://www.reddit.com/r/videos/comments/88ll08/
-
-	pngFileName = outputFile + '.png'
-
+	mpl_data = mdates.epoch2num(commentsCreated)
 	fig, ax = plt.subplots(nrows=1, ncols=1)
-	#ax.plot([0,1,2], [10,20,3])
-	ax.hist(commentsCreated, bins, histtype='bar', rwidth=1.0)
+	ax.hist(mpl_data, bins=100, histtype='bar', rwidth=0.8, label="comments", color="k")
+	ax.xaxis.set_major_locator(mdates.MonthLocator())
+	ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y/%m'))
+	plt.legend()
+	plt.xlabel('Time')
+	plt.ylabel('Comments')
+	plt.title('Histogram of ' + str(n) + ' comments for reddit link id ' + linkId)
 	# save the figure to file
 	fig.savefig(pngFileName)
 	plt.close(fig)  
@@ -101,13 +95,11 @@ def main():
 	f.write('	<title>Frequency of the comments over time for Reddit link id '+linkId+' </title>');
 	f.write('</head>');
 	f.write('<body>');
-	f.write('	<div class="content">');
 	f.write('	<h1>Histogram of comments for Reddit link id '+linkId+'</h1>');
 	f.write('	<figure>');
 	f.write('		<img src="'+pngFileName+'" width="80%" height="%80" alt="histogram" />');
 	f.write('		<figcaption>Frequency of comments for Reddit link id '+linkId+' </figcaption>');
 	f.write('	</figure>');
-	f.write('</div>');
 	f.write('</body>');
 	f.write('</html>');
 	f.close();
