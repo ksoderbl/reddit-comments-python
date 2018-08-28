@@ -1,0 +1,20 @@
+body {
+    background-color: #ddeeff;
+    font-family: Arial, Verdana, Helvetica, sans-serif;
+    font-size: 1.3em;
+}
+
+pre, code {
+    background-color: #fff;
+}
+
+
+.content {
+    width: 80%;
+    margin: auto;
+}
+
+.whitebox {
+    background-color: #fff;
+}
+
